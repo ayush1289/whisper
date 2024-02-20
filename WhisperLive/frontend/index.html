@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Capture</title>
+<!-- Include Socket.IO client library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+</head>
+<body>
+<button id="startCapture">Start Capture</button>
+<button id="stopCapture">Stop Capture</button>
+<script>
+    // Wait for the DOM content to be fully loaded
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get the startCapture button
+        const startCaptureButton = document.getElementById('startCapture');
+        // Get the stopCapture button
+        const stopCaptureButton = document.getElementById('stopCapture');
+        // Initialize variable to hold recorded audio data
+        let recordedChunks = [];
+        // Get the audio stream from the user's microphone
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+                // Create a new MediaRecorder instance, which will be used to record the audio
+                const mediaRecorder = new MediaRecorder(stream);
+                // Create a new Socket.IO connection
+                const socket = io('http://0.0.0.0:8000');
+                // When the startCapture button is clicked
+                startCaptureButton.addEventListener('click', function () {
+                    // Start recording the audio
+                    mediaRecorder.start();
+                    // Log the start of the recording
+                    console.log('Recording started');
+                });
+                // When the stopCapture button is clicked
+                stopCaptureButton.addEventListener('click', function () {
+                    // Stop recording the audio
+                    mediaRecorder.stop();
+                    // Log the end of the recording
+                    console.log('Recording stopped');
+                });
+                // When the MediaRecorder has data available
+                mediaRecorder.ondataavailable = function (event) {
+                    // Push the recorded chunk into the recordedChunks array
+                    recordedChunks.push(event.data);
+                };
+                // When the MediaRecorder stops recording
+                mediaRecorder.onstop = function () {
+                    // Create a new Blob from the recorded chunks
+                    const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+                    // Read the Blob as an array buffer
+                    const reader = new FileReader();
+                    reader.readAsArrayBuffer(audioBlob);
+                    // When the array buffer is ready
+                    reader.onload = function () {
+                        // Convert array buffer to bytes
+                        const audioBytes = new Uint8Array(reader.result);
+                        // Send the audio bytes to the server
+                        // socket.emit('transcribe', {'data':'audioBytes'});
+                        console.log(audioBytes);
+                    };
+                    // Clear the recordedChunks array for the next recording
+                    recordedChunks = [];
+                };
+            })
+            .catch(function (error) {
+                // Log any errors
+                console.error('Error accessing the microphone', error);
+            });
+    });
+
+</script>
+</body>
+</html>
