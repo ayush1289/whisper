@@ -15,16 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_transcription(host:str,audio_bytes):
-    client = TranscriptionClient(
-        host,
+client = TranscriptionClient(
+        "13.53.206.4",
         9090,
         lang="en",
         translate=False,
         model="small",
-        audio_bytes= audio_bytes,
     )
-    response = client()
 
 # Create a Socket.IO server
 sio = socketio.AsyncServer(async_mode="asgi")
@@ -33,10 +30,11 @@ app.mount("/socket.io", socketio.ASGIApp(sio))
 
 # Define the event handler for the 'transcribe' event
 @sio.on("transcribe")
-def transcribe(sid, data):
-    print(f"Received data: {data}")
-    get_transcription("13.53.206.4",data)
-    # Emit the 'transcribe' event to all connected clients
+def transcribe(sid,audio_bytes):
+    # print(f"Received data: {data}")
+    # response = client(audio_bytes)
+    print("Transcribing")
+
 
 if __name__ == "__main__":
     import uvicorn
