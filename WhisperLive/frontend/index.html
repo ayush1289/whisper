@@ -26,7 +26,7 @@
                 // Create a new MediaRecorder instance, which will be used to record the audio
                 const mediaRecorder = new MediaRecorder(stream);
                 // Create a new Socket.IO connection
-                const socket = io('http://0.0.0.0:8000');
+                const socket = io('http://0.0.0.0:8000/socket.io');
                 // When the startCapture button is clicked
                 startCaptureButton.addEventListener('click', function () {
                     // Start recording the audio
@@ -47,7 +47,7 @@
                     recordedChunks.push(event.data);
                 };
                 // When the MediaRecorder stops recording
-                mediaRecorder.onstop = function () {
+                mediaRecorder.onstart = function () {
                     // Create a new Blob from the recorded chunks
                     const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
                     // Read the Blob as an array buffer
@@ -58,8 +58,7 @@
                         // Convert array buffer to bytes
                         const audioBytes = new Uint8Array(reader.result);
                         // Send the audio bytes to the server
-                        // socket.emit('transcribe', {'data':'audioBytes'});
-                        console.log(audioBytes);
+                        socket.emit('transcribe', {'data': audioBytes});
                     };
                     // Clear the recordedChunks array for the next recording
                     recordedChunks = [];
