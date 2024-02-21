@@ -1,22 +1,23 @@
 from fastapi import FastAPI, HTTPException
-from whisper_live.client import TranscriptionClient
+from whisper_live.client import TranscriptionClient,Client
 from fastapi.responses import HTMLResponse
 import socketio
 from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
 
 app = FastAPI()
 
 # Enable CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500"],  # Allow requests from this origin
+    allow_origins=[],  # Allow requests from this origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-client = TranscriptionClient(
-        "13.53.206.4",
+server = TranscriptionClient(
+        "13.60.22.43",
         9090,
         lang="en",
         translate=False,
@@ -24,16 +25,23 @@ client = TranscriptionClient(
     )
 
 # Create a Socket.IO server
-sio = socketio.AsyncServer(async_mode="asgi")
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 # Mount Socket.IO server as a sub-application
-app.mount("/socket.io", socketio.ASGIApp(sio))
+app.mount("/", socketio.ASGIApp(sio))
 
 # Define the event handler for the 'transcribe' event
 @sio.on("transcribe")
 def transcribe(sid,audio_bytes):
-    # print(f"Received data: {data}")
-    # response = client(audio_bytes)
-    print("Transcribing")
+    audio_bytes =(audio_bytes['data'])
+    # with open("audio.wav", "bx") as f:
+    #     f.write(audio_bytes)
+    server.client.audio_stream(audio_bytes)
+
+    
+    
+sio.on("test")
+def test(sid):
+    print("Test")
 
 
 if __name__ == "__main__":

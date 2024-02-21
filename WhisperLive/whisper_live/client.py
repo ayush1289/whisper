@@ -80,7 +80,6 @@ class Client:
         translate=False,
         model="small",
         srt_file_path="output.srt",
-        audio_bytes = None,
     ):
         """
         Initializes a Client instance for audio recording and streaming to a server.
@@ -115,7 +114,6 @@ class Client:
             self.task = "translate"
 
         self.timestamp_offset = 0.0
-        self.audio_bytes = audio_bytes
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(
             format=self.format,
@@ -151,7 +149,7 @@ class Client:
         self.transcript = []
         print("[INFO]: * recording")
 
-    def on_message(self, ws, message,text_queue = []):
+    def on_message(self, ws, message):
         """
         Callback function called when a message is received from the server.
         
@@ -232,9 +230,8 @@ class Client:
             os.system("clear")
         for element in word_list:
             print(element)
-            with open("output.txt", "a") as f:
+            with open("output_transcription.txt", "a") as f:
                 f.write(element)
-            text_queue.append(element)
 
     def on_error(self, ws, error):
         print(error)
@@ -291,6 +288,7 @@ class Client:
 
         """
         try:
+            # print(message)
             self.client_socket.send(message, websocket.ABNF.OPCODE_BINARY)
         except Exception as e:
             print(e)
@@ -328,7 +326,7 @@ class Client:
 
                     audio_array = self.bytes_to_float_array(data)
                     self.send_packet_to_server(audio_array.tobytes())
-                    self.stream.write(data)
+                    self.stream.write(data) # plays the audio
 
                 wavfile.close()
 
@@ -431,6 +429,16 @@ class Client:
                 process.kill()
 
         print("[INFO]: HLS stream processing finished.")
+
+    def audio_stream(self,audio_bytes):
+        try:
+            audio_array = self.bytes_to_float_array(audio_bytes)
+            # with open("output.txt", "a") as f:
+            #     f.write(str(audio_array))
+            self.send_packet_to_server(audio_array.tobytes())
+        except Exception as e:
+            print(f"[ERROR]: Failed to handle audio stream: {e}")
+
 
 
     def record(self, out_file="output_recording.wav"):
@@ -563,34 +571,34 @@ class TranscriptionClient:
         lang=None,
         translate=False,
         model="small",
-        audio_bytes = None,
+
     ):
-        self.client = Client(host, port, lang, translate, model, audio_bytes)
+        self.client = Client(host, port, lang, translate, model)
 
-    def __call__(self, audio=None, hls_url=None):
-        """
-        Start the transcription process.
+    # def __call__(self, audio=None, hls_url=None):
+    #     """
+    #     Start the transcription process.
 
-        Initiates the transcription process by connecting to the server via a WebSocket. It waits for the server
-        to be ready to receive audio data and then sends audio for transcription. If an audio file is provided, it 
-        will be played and streamed to the server; otherwise, it will perform live recording.
+    #     Initiates the transcription process by connecting to the server via a WebSocket. It waits for the server
+    #     to be ready to receive audio data and then sends audio for transcription. If an audio file is provided, it 
+    #     will be played and streamed to the server; otherwise, it will perform live recording.
 
-        Args:
-            audio (str, optional): Path to an audio file for transcription. Default is None, which triggers live recording.
+    #     Args:
+    #         audio (str, optional): Path to an audio file for transcription. Default is None, which triggers live recording.
                    
-        """
-        print("[INFO]: Waiting for server ready ...")
-        while not self.client.recording:
-            if self.client.waiting or self.client.server_error:
-                self.client.close_websocket()
-                return
+    #     """
+    #     print("[INFO]: Waiting for server ready ...")
+    #     while not self.client.recording:
+    #         if self.client.waiting or self.client.server_error:
+    #             self.client.close_websocket()
+    #             return
 
-        print("[INFO]: Server Ready!")
-        if hls_url is not None:
-            self.client.process_hls_stream(hls_url)
-        elif audio is not None:
-            resampled_file = resample(audio)
-            self.client.play_file(resampled_file)
-        else:
-            print("[INFO]: Recording audio ...")
-            self.client.record()
+    #     print("[INFO]: Server Ready!")
+    #     if hls_url is not None:
+    #         self.client.process_hls_stream(hls_url)
+    #     elif audio is not None:
+    #         resampled_file = resample(audio)
+    #         self.client.play_file(resampled_file)
+    #     else:
+    #         print("[INFO]: Recording audio ...")
+    #         self.client.record()
