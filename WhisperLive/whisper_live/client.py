@@ -94,6 +94,7 @@ class Client:
             lang (str, optional): The selected language for transcription. Default is None.
             translate (bool, optional): Specifies if the task is translation. Default is False.
         """
+        print("INIT WAS CALLED")
         self.chunk = 4096
         self.format = pyaudio.paInt16
         self.channels = 1
@@ -432,19 +433,20 @@ class Client:
         print("[INFO]: HLS stream processing finished.")
 
 ###############################################################################
-    def audio_stream(self,filename):
+    def audio_stream(self,audio_bytes, filename: str = "audio.wav"):
+        
         resampled_file = resample(filename)
         with wave.open(resampled_file, "rb") as wavfile:
-            self.stream = self.p.open(
-                format=self.p.get_format_from_width(wavfile.getsampwidth()),
-                channels=wavfile.getnchannels(),
-                rate=wavfile.getframerate(),
-                input=True,
-                output=True,
-                frames_per_buffer=self.chunk,
-            )
+            # self.stream = self.p.open(
+            #     format=self.p.get_format_from_width(wavfile.getsampwidth()),
+            #     channels=wavfile.getnchannels(),
+            #     rate=wavfile.getframerate(),
+            #     input=True,
+            #     output=True,
+            #     frames_per_buffer=self.chunk,
+            # )
             try:
-                while self.recording:
+                while True:
                     data = wavfile.readframes(self.chunk)
                     if data == b"":
                         break
@@ -455,25 +457,24 @@ class Client:
                 wavfile.close()
 
                 assert self.last_response_recieved
-                while time.time() - self.last_response_recieved < self.disconnect_if_no_response_for:
-                    continue
 
-                if self.server_backend == "faster_whisper":
-                    self.write_srt_file(self.srt_file_path)
-                self.stream.close()
+                # if self.server_backend == "faster_whisper":
+                #     self.write_srt_file(self.srt_file_path)
+                # self.stream.close()
 
             except KeyboardInterrupt:
                 wavfile.close()
-                self.stream.stop_stream()
-                self.stream.close()
+                # self.stream.stop_stream()
+                # self.stream.close()
                 self.p.terminate()
-                self.close_websocket()
-                if self.server_backend == "faster_whisper":
-                    self.write_srt_file(self.srt_file_path)
+                os.remove(resampled_file)
+                os.remove(filename)
+                # if self.server_backend == "faster_whisper":
+                #     self.write_srt_file(self.srt_file_path)
                 print("[INFO]: Keyboard interrupt.")
 
 
-
+######################################################################################################
     def record(self, out_file="output_recording.wav"):
         """
         Record audio data from the input stream and save it to a WAV file.

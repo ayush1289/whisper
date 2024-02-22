@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from whisper_live.client import TranscriptionClient,Client
 import socketio
 from fastapi.middleware.cors import CORSMiddleware
-
 app = FastAPI()
 
 # Enable CORS (Cross-Origin Resource Sharing)
@@ -25,14 +24,16 @@ server = TranscriptionClient(
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app.mount("/", socketio.ASGIApp(sio))
 
+def main_work_flow(audio_bytes):
+    print(len(audio_bytes['data']))
+    with open("audio.wav", "wb") as f:
+        f.write(audio_bytes['data'])
+    server.client.audio_stream(audio_bytes['data'],filename = "audio.wav")
+
 
 @sio.on("transcribe")
 def transcribe(sid,audio_bytes):
-    audio_bytes =(audio_bytes['data'])
-    # print(len(audio_bytes))
-    with open("audio.wav", "wb") as f:
-        f.write(audio_bytes)   
-    server.client.audio_stream("audio.wav")
+    main_work_flow(audio_bytes)
 
     
 sio.on("test")
