@@ -10,7 +10,7 @@
 2. Run the client:
 
     ```
-    python main.py
+    python WhisperLive/main.py
     ```
 3. Run the frontend (index.html) by live-server.
 
