@@ -26,9 +26,9 @@ app.mount("/", socketio.ASGIApp(sio))
 
 def main_work_flow(audio_bytes):
     print(len(audio_bytes['data']))
-    with open("audio.wav", "wb") as f:
-        f.write(audio_bytes['data'])
-    server.client.audio_stream(audio_bytes['data'],filename = "audio.wav")
+    # with open("audio.wav", "wb") as f:
+    #     f.write(audio_bytes['data'])
+    # server.client.audio_stream(audio_bytes['data'],filename = "audio.wav")
 
 
 @sio.on("transcribe")
@@ -36,7 +36,7 @@ def transcribe(sid,audio_bytes):
     main_work_flow(audio_bytes)
 
     
-sio.on("test")
+@sio.on("test")
 def test(sid):
     print("Test")
 
