@@ -224,13 +224,14 @@ class Client:
         wrapper = textwrap.TextWrapper(width=60)
         word_list = wrapper.wrap(text="".join(text))
         # Print each line.
-        if os.name == "nt":
-            os.system("cls")
-        else:
-            os.system("clear")
-        for element in word_list:
-            print(element)
-            with open("output_transcription.txt", "a") as f:
+        # if os.name == "nt":
+        #     os.system("cls")
+        # else:
+        #     os.system("clear")
+        
+        #     print(element)
+        with open("output_transcription.txt", "w") as f:
+            for element in word_list:
                 f.write(element)
 
     def on_error(self, ws, error):
@@ -430,14 +431,46 @@ class Client:
 
         print("[INFO]: HLS stream processing finished.")
 
-    def audio_stream(self,audio_bytes):
-        try:
-            audio_array = self.bytes_to_float_array(audio_bytes)
-            # with open("output.txt", "a") as f:
-            #     f.write(str(audio_array))
-            self.send_packet_to_server(audio_array.tobytes())
-        except Exception as e:
-            print(f"[ERROR]: Failed to handle audio stream: {e}")
+###############################################################################
+    def audio_stream(self,filename):
+        resampled_file = resample(filename)
+        with wave.open(resampled_file, "rb") as wavfile:
+            self.stream = self.p.open(
+                format=self.p.get_format_from_width(wavfile.getsampwidth()),
+                channels=wavfile.getnchannels(),
+                rate=wavfile.getframerate(),
+                input=True,
+                output=True,
+                frames_per_buffer=self.chunk,
+            )
+            try:
+                while self.recording:
+                    data = wavfile.readframes(self.chunk)
+                    if data == b"":
+                        break
+
+                    audio_array = self.bytes_to_float_array(data)
+                    self.send_packet_to_server(audio_array.tobytes())
+
+                wavfile.close()
+
+                assert self.last_response_recieved
+                while time.time() - self.last_response_recieved < self.disconnect_if_no_response_for:
+                    continue
+
+                if self.server_backend == "faster_whisper":
+                    self.write_srt_file(self.srt_file_path)
+                self.stream.close()
+
+            except KeyboardInterrupt:
+                wavfile.close()
+                self.stream.stop_stream()
+                self.stream.close()
+                self.p.terminate()
+                self.close_websocket()
+                if self.server_backend == "faster_whisper":
+                    self.write_srt_file(self.srt_file_path)
+                print("[INFO]: Keyboard interrupt.")
 
 
 

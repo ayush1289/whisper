@@ -1,4 +1,4 @@
 1
-00:00:23,160 --> 00:00:25,160
- It's working fine then.
+00:00:00,000 --> 00:00:04,980
+ This is a demo for transcription client
 

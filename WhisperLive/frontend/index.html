@@ -1,81 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Audio Capture</title>
-<!-- Include Socket.IO client library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Capture</title>
+    <!-- Include Socket.IO client library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
 </head>
+
 <body>
-<button id="startCapture">Start Capture</button>
-<button id="stopCapture">Stop Capture</button>
-<script>
-    // Wait for the DOM content to be fully loaded
+    <button id="startCapture">Start Capture</button>
+    <button id="stopCapture">Stop Capture</button>
+    <script>
+        // Wait for the DOM content to be fully loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            const socket = io('http://0.0.0.0:8000');
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const socket = io('http://0.0.0.0:8000');
-        socket.emit('test', {'data': 'Connected'});
-        const startCaptureButton = document.getElementById('startCapture');
-        
-        const stopCaptureButton = document.getElementById('stopCapture');
+            const startCaptureButton = document.getElementById('startCapture');
+            const stopCaptureButton = document.getElementById('stopCapture');
+            const transcription = document.getElementById('transcription');
+            let recordedChunks = [];
+            let intervalId;
 
-        let recordedChunks = [];
-        
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-                
-                const mediaRecorder = new MediaRecorder(stream);
-                
-                startCaptureButton.addEventListener('click', function () {
-                    
-                    mediaRecorder.start();
-                    
-                    console.log('Recording started');
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    const mediaRecorder = new MediaRecorder(stream);
+
+                    startCaptureButton.addEventListener('click', function () {
+                        mediaRecorder.start();
+                        console.log('Recording started');
+                        intervalId = setInterval(function () {
+                            // Trigger the ondataavailable event manually every 5 seconds
+                            mediaRecorder.requestData();
+                        }, 5000);
+
+
+                    });
+
+                    stopCaptureButton.addEventListener('click', function () {
+                        mediaRecorder.stop();
+                        console.log('Recording stopped');
+                        clearInterval(intervalId);
+                    });
+
+                    mediaRecorder.ondataavailable = function (event) {
+                        // Push the recorded chunk into the recordedChunks array
+                        console.log(event);
+                        recordedChunks.push(event.data);
+                        sendAudioChunks();
+                        recordedChunks = recordedChunks.slice(-1);
+                        console.log(recordedChunks);
+
+                    };
+
+                    function sendAudioChunks() {
+                        console.log(recordedChunks)
+                        if (recordedChunks.length > 0) {
+                            const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+                            const reader = new FileReader();
+                            reader.readAsArrayBuffer(audioBlob);
+
+                            reader.onload = function () {
+                                let buffer = reader.result;
+                                if (buffer.byteLength % 2 !== 0) {
+                                    buffer = buffer.slice(0, buffer.byteLength - 1);
+                                }
+                                const audioBytes = new Int16Array(buffer);
+                                console.log(audioBytes);
+                                socket.emit('test', { 'data': 'Connected' });
+                                socket.emit('transcribe', { 'data': audioBytes.buffer });
+                            };
+                            recordedChunks.length = 0;
+                        }
+                    } 
+                    mediaRecorder.onstop = function () {
+                        clearInterval(intervalId);
+                    };
+                })
+                .catch(function (error) {
+                    console.error('Error accessing the microphone', error);
                 });
-                
-                stopCaptureButton.addEventListener('click', function () {
-                    mediaRecorder.stop();
-                    console.log('Recording stopped');
-                });
-                // When the MediaRecorder has data available
-                mediaRecorder.ondataavailable = function (event) {
-                    // Push the recorded chunk into the recordedChunks array
-                    console.log("ondataavailable");
-                    recordedChunks.push(event.data);
 
-                    // Create a new Blob from the recorded chunks
-                    const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
-                    // Read the Blob as an array buffer
-                    const reader = new FileReader();
-                    reader.readAsArrayBuffer(audioBlob);
-                    // When the array buffer is ready
-                    reader.onload = function () {
-                    let buffer = reader.result;
-                    // Ensure the buffer length is a multiple of 2
-                    if (buffer.byteLength % 2 !== 0) {
-                        // If not, create a new buffer with the length rounded down to the nearest even number.
-                        buffer = buffer.slice(0, buffer.byteLength - 1);
-                    }
-                    const audioBytes = new Int16Array(buffer);
-                    // Send the audio bytes to the server
-                    console.log(audioBytes);
-                    socket.emit('transcribe', {'data': audioBytes.buffer});
-                };
-                    // Clear the recordedChunks array for the next recording
-                    recordedChunks = [];
 
-                };
-                // When the MediaRecorder stops recording
-                mediaRecorder.onstart = function () {
-                };
-            })
-            .catch(function (error) {
-                // Log any errors
-                console.error('Error accessing the microphone', error);
             });
-    });
 
-</script>
+    </script>
 </body>
+
 </html>
