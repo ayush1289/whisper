@@ -16,7 +16,7 @@
         // Wait for the DOM content to be fully loaded
         document.addEventListener('DOMContentLoaded', function () {
             const socket = io('http://0.0.0.0:8000');
-
+            socket.emit('test');
             const startCaptureButton = document.getElementById('startCapture');
             const stopCaptureButton = document.getElementById('stopCapture');
             const transcription = document.getElementById('transcription');
@@ -68,7 +68,7 @@
                                 }
                                 const audioBytes = new Int16Array(buffer);
                                 console.log(audioBytes);
-                                socket.emit('test', { 'data': 'Connected' });
+                                
                                 socket.emit('transcribe', { 'data': audioBytes.buffer });
                             };
                             recordedChunks.length = 0;
