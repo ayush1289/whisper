@@ -25,10 +25,10 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
 app.mount("/", socketio.ASGIApp(sio))
 
 def main_work_flow(audio_bytes):
-    print(len(audio_bytes['data']))
-    # with open("audio.wav", "wb") as f:
-    #     f.write(audio_bytes['data'])
-    # server.client.audio_stream(audio_bytes['data'],filename = "audio.wav")
+    # print(len(audio_bytes['data']))
+    with open("audio.wav", "wb") as f:
+        f.write(audio_bytes['data'])
+    server.client.audio_stream(audio_bytes['data'],filename = "audio.wav")
 
 
 @sio.on("transcribe")
