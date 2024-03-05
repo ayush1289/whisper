@@ -33,7 +33,7 @@
                         intervalId = setInterval(function () {
                             // Trigger the ondataavailable event manually every 5 seconds
                             mediaRecorder.requestData();
-                        }, 5000);
+                        }, 1000);
 
 
                     });
@@ -41,6 +41,7 @@
                     stopCaptureButton.addEventListener('click', function () {
                         mediaRecorder.stop();
                         console.log('Recording stopped');
+                        sendAudioChunks();
                         clearInterval(intervalId);
                     });
 
@@ -48,8 +49,11 @@
                         // Push the recorded chunk into the recordedChunks array
                         console.log(event);
                         recordedChunks.push(event.data);
-                        sendAudioChunks();
-                        recordedChunks = recordedChunks.slice(-1);
+                        const totalSize = recordedChunks.reduce((acc, chunk) => acc + chunk.size, 0);
+                        if (totalSize >= 4096*3) {
+                            sendAudioChunks();
+                            recordedChunks = [];
+                        }
                         console.log(recordedChunks);
 
                     };
@@ -63,9 +67,9 @@
 
                             reader.onload = function () {
                                 let buffer = reader.result;
-                                if (buffer.byteLength % 2 !== 0) {
-                                    buffer = buffer.slice(0, buffer.byteLength - 1);
-                                }
+                                // if (buffer.byteLength % 2 !== 0) {
+                                //     buffer = buffer.slice(0, buffer.byteLength - 1);
+                                // }
                                 const audioBytes = new Int16Array(buffer);
                                 console.log(audioBytes);
                                 
