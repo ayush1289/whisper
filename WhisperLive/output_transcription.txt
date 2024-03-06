@@ -1,1 +1,0 @@
- This is the third demo for the transcription client.
