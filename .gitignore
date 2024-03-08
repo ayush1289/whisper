@@ -1,8 +1,7 @@
-myenv/
+env/
 whisper.pem
-WhisperLive/frontend/public/
-WhisperLive/frontend/src/
-WhisperLive/frontend/package.json
-WhisperLive/frontend/package-lock.json
-WhisperLive/frontend/README.md
 .gitignore
+audioInput/
+output.wav
+streamui_temp.py
+__pycache__/
