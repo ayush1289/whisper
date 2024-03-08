@@ -221,17 +221,8 @@ class Client:
                     if not len(self.transcript) or float(seg['start']) >= float(self.transcript[-1]['end']):
                         self.transcript.append(seg)
 
-        # # keep only last 3
-        # if len(text) > 3:
-        #     text = text[-3:]
         wrapper = textwrap.TextWrapper(width=60)
         word_list = wrapper.wrap(text="".join(self.text))
-        # Print each line.
-        # if os.name == "nt":
-        #     os.system("cls")
-        # else:
-        #     os.system("clear")
-        
         print(word_list)
         with open("output_transcription.txt", "w") as f:
             for element in word_list:
