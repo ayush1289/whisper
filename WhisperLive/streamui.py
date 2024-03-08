@@ -75,16 +75,17 @@ def audio_frame_to_np_buffer(frames, target_sample_rate=None, mono=False):
     
     return combined_buffer
 
-fig_place = st.empty()
+# fig_place = st.empty()
+st.title("WhisperLive")
 text_box = st.empty()
 text = ""
 
-text_box.text("Transcription will appear here")
 
-fig, [ax_time, ax_freq] = plt.subplots(2, 1, gridspec_kw={"top": 1.5, "bottom": 0.2})
+# fig, [ax_time, ax_freq] = plt.subplots(2, 1, gridspec_kw={"top": 1.5, "bottom": 0.2})
 
 sound_window_len = 5000  # 5s
 sound_window_buffer = None
+
 while True:
     if webrtc_ctx.audio_receiver:
         try:
@@ -123,10 +124,14 @@ while True:
         new_words = read_text_file("output_transcription.txt")
         if new_words:
             text = new_words
-            text_box.text(new_words)
+            with text_box:
+                st.write(text)
+
+            # text_box.text(new_words)
 
     else:
         # logger.warning("AudioReciver is not set. Abort.")
+        with open("output_transcription.txt", "w") as file:
+            file.write("")
         break
     
-    text_box.text(text)
