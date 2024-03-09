@@ -19,3 +19,4 @@ uvicorn==0.27.1
 websocket_client==1.7.0
 websockets==12.0
 whisper==1.1.10
+openai==1.13.3

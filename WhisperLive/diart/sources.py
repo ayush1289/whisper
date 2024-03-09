@@ -46,6 +46,63 @@ class AudioSource(ABC):
         """Stop reading the source and close all open streams."""
         pass
 
+class AudioStreamSource(AudioSource):
+    """Represents an audio source tied to a stream of audio chunks."""
+    
+    def __init__(
+        self,
+        block_duration: float = 0.5,
+        stream = None,
+        
+    ):
+        # Use the lowest supported sample rate
+        sample_rates = [16000, 32000, 44100, 48000]
+        self.sample_rate = 16000
+        # Determine block size in samples and create input stream
+        self.block_size = int(np.rint(block_duration * self.sample_rate))
+        # self._mic_stream = sd.InputStream(
+        #     channels=1,
+        #     samplerate=self.sample_rate,
+        #     latency=0,
+        #     blocksize=self.block_size,
+        #     callback=self._read_callback,
+        #     device=device,
+        # )
+        self._queue = SimpleQueue()
+        self.external_stream = stream  # Initialize external stream
+
+    def _read_callback(self, samples, *args):
+        self._queue.put_nowait(samples[:, [0]].T)
+
+    def set_external_stream(self, stream):
+        self.external_stream = stream
+
+    def read(self):
+        if self.external_stream is None:
+            raise ValueError("External stream not set. Use set_external_stream method.")
+
+        while True:
+            try:
+                data = next(self.external_stream)
+                self._queue.put_nowait(data)
+            except StopIteration:
+                break
+
+        while not self._queue.empty():
+            try:
+                self.stream.on_next(self._queue.get_nowait())
+            except BaseException as e:
+                self.stream.on_error(e)
+                break
+
+        self.stream.on_completed()
+        self.close()
+
+    def close(self):
+        self._mic_stream.stop()
+        self._mic_stream.close()
+
+    
 
 class FileAudioSource(AudioSource):
     """Represents an audio source tied to a file.

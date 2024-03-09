@@ -208,13 +208,14 @@ class Client:
 
         n_segments = len(message)
 
+        cur_txt = []
         if n_segments:
             for i, seg in enumerate(message):
                 if self.text and self.text[-1] == seg["text"]:
                     # already got it
                     continue
                 self.text.append(seg["text"])
-
+                cur_txt.append(seg["text"])
                 if i == n_segments-1: 
                     self.last_segment = seg
                 elif self.server_backend == "faster_whisper":
@@ -222,7 +223,7 @@ class Client:
                         self.transcript.append(seg)
 
         wrapper = textwrap.TextWrapper(width=60)
-        word_list = wrapper.wrap(text="".join(self.text))
+        word_list = wrapper.wrap(text="".join(cur_txt))
         print(word_list)
         with open("output_transcription.txt", "w") as f:
             for element in word_list:

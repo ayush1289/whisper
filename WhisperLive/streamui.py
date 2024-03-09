@@ -8,7 +8,7 @@ import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
 import librosa
 import time
-
+from chatAssistant import ChatAssistant
 logger = logging.getLogger(__name__)
 server = None
 last_message_time = time.time()  # Initialize the last message time
@@ -24,6 +24,8 @@ def start_server():
         model="small",
     )
     return server
+
+client = ChatAssistant(api_key="api_key")
 
 def read_text_file(file_path: str):
     with open(file_path, "r") as file:
@@ -118,6 +120,7 @@ while True:
         # Check if 4 seconds have elapsed since the last message
 
         new_words = read_text_file("output_transcription.txt")
+        korean_new_words = client.translate(new_words,"korean")
         if last_message_text == new_words:
 
                 continue
@@ -126,20 +129,13 @@ while True:
 
                 
                 clear_text_file("output_transcription.txt")
+                last_message_text = new_words
                 if new_words:
                     # Display a new message
-                    last_message_text = new_words
                     with st.chat_message("user"):
                         st.write(last_message_text)
+                        st.write(korean_new_words)
                     last_message_time = time.time()
-            else:
-                # Update the existing message
-                clear_text_file("output_transcription.txt")
-                if new_words:
-                    last_message_text = new_words
-                    with st.chat_message("user"):
-                        st.write(last_message_text)
-
     else:
         with open("output_transcription.txt", "w") as file:
             file.write("")
