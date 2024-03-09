@@ -1,7 +1,3 @@
-"""A sample to use WebRTC in sendonly mode to transfer audio frames
-from the browser to the server and visualize them with matplotlib
-and `st.pyplot`."""
-
 import logging
 import queue
 from whisper_live.client import TranscriptionClient, Client
@@ -10,15 +6,12 @@ import numpy as np
 import pydub
 import streamlit as st
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
-import av
 import librosa
 import time
 
-# from sample_utils.turn import get_ice_servers
-
 logger = logging.getLogger(__name__)
 server = None
-
+last_message_time = time.time()  # Initialize the last message time
 
 @st.cache_resource
 def start_server():
@@ -32,74 +25,62 @@ def start_server():
     )
     return server
 
-
-start_server()
-webrtc_ctx = webrtc_streamer(
-    key="sendonly-audio",
-    mode=WebRtcMode.SENDONLY,
-    audio_receiver_size=256,
-    # rtc_configuration={"iceServers": get_ice_servers()},
-    media_stream_constraints={"audio": True},
-)
-
-
 def read_text_file(file_path: str):
     with open(file_path, "r") as file:
         return file.read()
+
+def clear_text_file(file_path: str):
+    with open(file_path, "w") as file:
+        file.write("")
 
 
 def audio_frame_to_np_buffer(frames, target_sample_rate=None, mono=False):
     arrays = []
 
     for frame in frames:
-        # Determine the number of channels from the frame layout
         num_channels = len(frame.layout.channels)
-
-        # Convert each frame to a NumPy array, properly accounting for the number of channels
         np_frame = np.frombuffer(frame.planes[0].to_bytes(), dtype=np.int16).reshape(
             -1, num_channels
         )
-
-        # If converting to mono, average the channels
         if mono:
-            np_frame = np.mean(np_frame, axis=1).astype(
-                np.int16
-            )  # Ensure dtype stays as int16 after averaging
-
-        # If resampling is required, perform the resampling on each frame's buffer
+            np_frame = np.mean(np_frame, axis=1).astype(np.int16)
         if target_sample_rate is not None and target_sample_rate != frame.sample_rate:
-            # Convert to float32 and normalize before resampling
             np_frame = np_frame.astype(np.float32) / 32768
-            # Resample
             np_frame = librosa.resample(
                 np_frame.T, orig_sr=frame.sample_rate, target_sr=target_sample_rate
             )
             if mono:
-                # Ensure mono output is a single row when mono=True
                 np_frame = np_frame[np.newaxis, :]
-            # De-normalize and convert back to int16
             np_frame = (np_frame * 32768).astype(np.int16)
 
         arrays.append(np_frame)
 
-    # Concatenate all frame arrays into a single buffer
     combined_buffer = np.concatenate(arrays, axis=0)
 
     return combined_buffer
 
 
-# fig_place = st.empty()
 st.title("WhisperLive")
-text_box = st.empty()
+
+start_server()
+time.sleep(5)
+webrtc_ctx = webrtc_streamer(
+    key="sendonly-audio",
+    mode=WebRtcMode.SENDONLY,
+    audio_receiver_size=256,
+    media_stream_constraints={"audio": True},
+)
+
+# text_box = st.empty()
 text = ""
-
-
-# fig, [ax_time, ax_freq] = plt.subplots(2, 1, gridspec_kw={"top": 1.5, "bottom": 0.2})
-
-sound_window_len = 5000  # 5s
+last_message_text = None  # Initialize the last message text
+sound_window_len = 5000
 sound_window_buffer = None
 
+
+
 while True:
+    clear_text_file("output_transcription.txt")
     if webrtc_ctx.audio_receiver:
         try:
             audio_frames = webrtc_ctx.audio_receiver.get_frames(timeout=1)
@@ -110,14 +91,12 @@ while True:
         sound_chunk = pydub.AudioSegment.empty()
         if len(audio_frames) == 0:
             continue
-        sr = start_server()
 
         np_buffer = audio_frame_to_np_buffer(
             audio_frames, target_sample_rate=16000, mono=True
         )
-        sr.client.audio_stream(np_buffer, filename="audio.wav")
+        start_server().client.audio_stream(np_buffer, filename="audio.wav")
         for audio_frame in audio_frames:
-
             sound = pydub.AudioSegment(
                 data=audio_frame.to_ndarray().tobytes(),
                 sample_width=audio_frame.format.bytes,
@@ -136,16 +115,32 @@ while True:
             if len(sound_window_buffer) > sound_window_len:
                 sound_window_buffer = sound_window_buffer[-sound_window_len:]
 
-        new_words = read_text_file("output_transcription.txt")
-        if new_words:
-            text = new_words
-            with text_box:
-                st.write(text)
+        # Check if 4 seconds have elapsed since the last message
 
-            # text_box.text(new_words)
+        new_words = read_text_file("output_transcription.txt")
+        if last_message_text == new_words:
+
+                continue
+        else:
+            if time.time() - last_message_time > 5:
+
+                
+                clear_text_file("output_transcription.txt")
+                if new_words:
+                    # Display a new message
+                    last_message_text = new_words
+                    with st.chat_message("user"):
+                        st.write(last_message_text)
+                    last_message_time = time.time()
+            else:
+                # Update the existing message
+                clear_text_file("output_transcription.txt")
+                if new_words:
+                    last_message_text = new_words
+                    with st.chat_message("user"):
+                        st.write(last_message_text)
 
     else:
-        # logger.warning("AudioReciver is not set. Abort.")
         with open("output_transcription.txt", "w") as file:
             file.write("")
         break
